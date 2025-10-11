@@ -1,4 +1,3 @@
-// models/Employee.js
 const mongoose = require("mongoose");
 
 const EmployeeSchema = new mongoose.Schema({
@@ -26,6 +25,8 @@ const EmployeeSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
+    enum: ["finance_manager", "service_manager", "trainer", "inventory_manager", 
+           "supplier", "duties_manager", "community_service_coordinator", "mentor"]
   },
   county: {
     type: String,
@@ -40,9 +41,13 @@ const EmployeeSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  specialization: String,
+  company: String,
+  isAvailable: {
+    type: Boolean,
+    default: true
+  }
 });
-
-// No password hashing logic should be here
 
 const Employee = mongoose.model("Employee", EmployeeSchema);
 

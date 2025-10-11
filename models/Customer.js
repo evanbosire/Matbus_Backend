@@ -3,39 +3,43 @@ const mongoose = require("mongoose");
 const CustomerSchema = new mongoose.Schema({
   customerName: {
     type: String,
-    required: true, // Ensure this is set to true
+    required: true,
   },
   gender: {
     type: String,
-    required: true, // Ensure gender is required
+    required: true,
   },
   phone: {
     type: String,
-    required: true, // Ensure phone is required
+    required: true,
   },
   email: {
     type: String,
-    required: true, // Ensure email is required
-    unique: true, // Ensure email is unique
+    required: true,
+    unique: true,
   },
   location: {
     type: String,
-    required: true, // Ensure location is required
+    required: true,
   },
   status: {
     type: String,
-    enum: ["pending", "active", "suspended", "rejected"], // Define possible states
-    default: "pending", // Default status is pending
+    enum: ["pending", "active", "suspended", "rejected"],
+    default: "pending",
   },
   password: {
     type: String,
-    required: true, // Ensure password is required
+    required: true,
   },
   verified: {
     type: Boolean,
     default: false,
   },
   verificationToken: String,
+  role: {
+    type: String,
+    default: "youth"
+  },
   addresses: [
     {
       name: String,
