@@ -25,8 +25,8 @@ const EmployeeSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
-    enum: ["finance_manager", "service_manager", "trainer", "inventory_manager", 
-           "supplier", "Duties manager", "community_service_coordinator", "mentor"]
+    enum: ["Finance manager", "Service manager", "Trainer", "Inventory manager", 
+           "Supplier", "Duties manager", "Community Service Coordinator", "mentor"]
   },
   county: {
     type: String,
