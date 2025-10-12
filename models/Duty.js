@@ -5,13 +5,6 @@ const DutySchema = new mongoose.Schema({
   description: String,
   location: { type: String, required: true },
   date: { type: Date, required: true },
-
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee", // duties_manager
-    required: true,
-  },
-
   coordinator: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Employee", // community_service_coordinator

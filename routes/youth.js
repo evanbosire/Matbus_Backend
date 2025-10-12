@@ -286,53 +286,92 @@ router.get('/certificate/youth/:youthId', async (req, res) => {
 // ************ COMMUNITY SERVICE VOLUNTEER ROLES ************** //
 
 
-// View all available (open) duties
+// =====================================
+// 1️⃣ View all available (open) duties
+// =====================================
 router.get("/duties/available", async (req, res) => {
   try {
+    // Fetch only open duties (available for enrollment)
     const duties = await Duty.find({ status: "open" })
-      .populate("createdBy coordinator");
-    res.json(duties);
+      .populate("coordinator enrolledYouths.youth", "customerName email phone");
+    
+    if (!duties.length) {
+      return res.status(404).json({ message: "No available duties found" });
+    }
+
+    res.status(200).json(duties);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Enroll in a duty voluntarily
+
+// =====================================
+// 2️⃣ Enroll in a duty voluntarily
+// =====================================
 router.post("/duties/:id/enroll", async (req, res) => {
   try {
     const { youthId } = req.body;
     const duty = await Duty.findById(req.params.id);
 
-    if (!duty) return res.status(404).json({ message: "Duty not found" });
-    if (duty.status !== "open") return res.status(400).json({ message: "Duty is closed for enrollment" });
+    if (!duty)
+      return res.status(404).json({ message: "Duty not found" });
 
-    // prevent double enrollment
-    const already = duty.enrolledYouths.find(e => e.youth.toString() === youthId);
-    if (already) return res.status(400).json({ message: "You are already enrolled" });
+    if (duty.status !== "open")
+      return res.status(400).json({ message: "Duty is closed for enrollment" });
 
-    // optional: enforce capacity
+    // Check if youth exists
+    const youth = await Customer.findById(youthId);
+    if (!youth)
+      return res.status(404).json({ message: "Youth not found" });
+
+    // Prevent duplicate enrollment
+    const already = duty.enrolledYouths.find(
+      (e) => e.youth.toString() === youthId
+    );
+    if (already)
+      return res.status(400).json({ message: "You are already enrolled in this duty" });
+
+    // Enforce capacity
     if (duty.enrolledYouths.length >= duty.capacity) {
-      return res.status(400).json({ message: "Duty is full" });
+      return res.status(400).json({ message: "Duty is already full" });
     }
 
-    duty.enrolledYouths.push({ youth: youthId });
+    // Add youth to enrolled list
+    duty.enrolledYouths.push({ youth: youthId, status: "enrolled" });
     await duty.save();
 
-    res.json({ message: "Enrolled successfully", duty });
+    res.status(200).json({
+      message: "Enrolled successfully",
+      duty,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// View all duties a youth has enrolled in
+
+// =====================================
+// 3️⃣ View all duties a youth has enrolled in
+// =====================================
 router.get("/:youthId/duties", async (req, res) => {
   try {
+    const youth = await Customer.findById(req.params.youthId);
+    if (!youth)
+      return res.status(404).json({ message: "Youth not found" });
+
     const duties = await Duty.find({ "enrolledYouths.youth": req.params.youthId })
-      .populate("createdBy coordinator enrolledYouths.youth");
-    res.json(duties);
+      .populate("coordinator enrolledYouths.youth", "customerName email phone");
+
+    if (!duties.length) {
+      return res.status(404).json({ message: "No duties found for this youth" });
+    }
+
+    res.status(200).json(duties);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 module.exports = router;
