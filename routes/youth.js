@@ -8,6 +8,7 @@ const router = express.Router();
 
 const PDFDocument = require("pdfkit");
 const Employee = require("../models/Employee");
+const Duty = require("../models/Duty");
 // Get all available courses (for youth)
 router.get("/courses", async (req, res) => {
   try {
@@ -276,6 +277,59 @@ router.get('/certificate/youth/:youthId', async (req, res) => {
       certificates
     });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// ************ COMMUNITY SERVICE VOLUNTEER ROLES ************** //
+
+
+// View all available (open) duties
+router.get("/duties/available", async (req, res) => {
+  try {
+    const duties = await Duty.find({ status: "open" })
+      .populate("createdBy coordinator");
+    res.json(duties);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Enroll in a duty voluntarily
+router.post("/duties/:id/enroll", async (req, res) => {
+  try {
+    const { youthId } = req.body;
+    const duty = await Duty.findById(req.params.id);
+
+    if (!duty) return res.status(404).json({ message: "Duty not found" });
+    if (duty.status !== "open") return res.status(400).json({ message: "Duty is closed for enrollment" });
+
+    // prevent double enrollment
+    const already = duty.enrolledYouths.find(e => e.youth.toString() === youthId);
+    if (already) return res.status(400).json({ message: "You are already enrolled" });
+
+    // optional: enforce capacity
+    if (duty.enrolledYouths.length >= duty.capacity) {
+      return res.status(400).json({ message: "Duty is full" });
+    }
+
+    duty.enrolledYouths.push({ youth: youthId });
+    await duty.save();
+
+    res.json({ message: "Enrolled successfully", duty });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// View all duties a youth has enrolled in
+router.get("/:youthId/duties", async (req, res) => {
+  try {
+    const duties = await Duty.find({ "enrolledYouths.youth": req.params.youthId })
+      .populate("createdBy coordinator enrolledYouths.youth");
+    res.json(duties);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

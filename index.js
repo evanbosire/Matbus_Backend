@@ -20,7 +20,9 @@ const supplierRoutes = require('./routes/supplier');
 const communityServiceRoutes = require('./routes/communityService');
 const donorRoutes = require('./routes/donor');
 const mentorRoutes = require('./routes/mentor');
-const materialRoutes = require('./routes/materialRequests')
+const materialRoutes = require('./routes/materialRequests');
+const dutiesManagerRoutes = require('./routes/dutiesManager');
+const coordinatorRoutes = require('./routes/coordinator')
 // const authRoutes = require('./routes/auth');
 
 const app = express();
@@ -73,7 +75,11 @@ app.use('/api/training-materials', require('./routes/trainingMaterials'));
 app.use('/certificates', express.static(path.join(__dirname, 'certificates')));
 
 
+// ******* community service flow **************
 
+app.use('/api/duties-manager', dutiesManagerRoutes)
+// -> youth apis comes here to view available duties
+app.use('/api/service-coordinator', coordinatorRoutes)
 
 
 
