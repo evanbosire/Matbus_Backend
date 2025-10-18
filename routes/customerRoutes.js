@@ -276,7 +276,33 @@ const generateSecretKey = () => {
 };
 const secretKey = generateSecretKey();
 
-// // POST /api/customer/login
+// // // POST /api/customer/login
+// router.post("/login", async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     const customer = await Customer.findOne({ email });
+//     if (!customer || customer.password !== password) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+
+//     if (customer.status !== "active") {
+//       return res.status(403).json({ message: "Account not approved" });
+//     }
+
+//     const token = jwt.sign(
+//       { customerId: customer._id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: process.env.JWT_EXPIRES_IN }
+//     );
+
+//     res.status(200).json({ token, message: "Login successful" });
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+// POST /api/customer/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -296,7 +322,13 @@ router.post("/login", async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
-    res.status(200).json({ token, message: "Login successful" });
+    res.status(200).json({ 
+      token, 
+      message: "Login successful",
+      userId: customer._id, // Add this line
+      email: customer.email,
+      role: 'customer'
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

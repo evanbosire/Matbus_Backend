@@ -30,65 +30,6 @@ router.get("/courses", async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
-// Register and pay for a course
-// router.post("/enroll", async (req, res) => {
-//   try {
-//     const { courseId, mpesaCode, customerId } = req.body;
-
-//     const course = await Course.findById(courseId);
-//     if (!course) {
-//       return res.status(404).json({ message: "Course not found" });
-//     }
-
-//     const customer = await Customer.findById(customerId);
-//     if (!customer) {
-//       return res.status(404).json({ message: "Customer not found" });
-//     }
-
-//     // Check if already enrolled
-//     const existingEnrollment = await Enrollment.findOne({
-//       youth: customerId,
-//       course: courseId,
-//     });
-
-//     if (existingEnrollment) {
-//       return res
-//         .status(400)
-//         .json({ message: "Already enrolled in this course" });
-//     }
-
-//     // Create payment record
-//     const payment = new Payment({
-//       mpesaCode,
-//       amount: course.fees,
-//       payer: customerId,
-//       type: "course_payment",
-//       course: courseId,
-//     });
-
-//     await payment.save();
-
-//     // Create enrollment record
-//     const enrollment = new Enrollment({
-//       youth: customerId,
-//       course: courseId,
-//       payment: payment._id,
-//       status: "pending",
-//     });
-
-//     await enrollment.save();
-
-//     res.status(201).json({
-//       message:
-//         "Enrollment request submitted. Waiting for payment verification.",
-//       enrollment,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
 // Youth enrolls & pays for a course
 router.post("/enroll", async (req, res) => {
   try {
