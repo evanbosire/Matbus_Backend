@@ -10,7 +10,7 @@ const paymentSchema = new mongoose.Schema({
       },
       message: 'MPESA code must be exactly 10 characters (uppercase letters and numbers only), and cannot be all zeros'
     },
-    set: v => v.toUpperCase() // ensures stored code is always uppercase
+    set: v => v.toUpperCase() 
   },
   amount: {
     type: Number,

@@ -66,7 +66,7 @@ router.put('/payments/verify/:paymentId', async (req, res) => {
 router.get('/donations/pending', async (req, res) => {
   try {
     const donations = await Donation.find({ status: 'pending' })
-      .populate('donor', 'customerName email');
+      .populate('donor', 'firstName lastName email');
     
     res.json(donations);
   } catch (error) {
@@ -91,7 +91,7 @@ router.put('/donations/:donationId', async (req, res) => {
     }
     
     const employee = await Employee.findById(employeeId);
-    if (!employee || employee.role !== 'finance_manager') {
+    if (!employee || employee.role !== 'Finance manager') {
       return res.status(403).json({ message: 'Only finance managers can approve donations' });
     }
     

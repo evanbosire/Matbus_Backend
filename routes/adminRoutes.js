@@ -1,5 +1,5 @@
 const express = require("express");
-const Admin = require("../models/Admin"); // Import the Admin model
+const Admin = require("../models/Admin"); 
 const router = express.Router();
 
 // Admin Registration Route
@@ -7,7 +7,7 @@ router.post("/register", async (req, res) => {
   const { id, name, email, password, phone } = req.body;
 
   try {
-    // Check if the email is already registered
+   
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
       return res.status(400).json({ message: "Email already registered" });
@@ -18,7 +18,7 @@ router.post("/register", async (req, res) => {
       id,
       name,
       email,
-      password, // No hashing applied
+      password, 
       phone,
     });
 
@@ -32,26 +32,26 @@ router.post("/register", async (req, res) => {
 // Admin Login Route
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  console.log("Login request received:", email); // Log the request
+  console.log("Login request received:", email); 
 
   try {
     // Find the admin by email
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      console.log("Admin not found:", email); // Log if admin is not found
+      console.log("Admin not found:", email); 
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Compare the plain-text password directly
     if (password !== admin.password) {
-      console.log("Invalid password for:", email); // Log if password is invalid
+      console.log("Invalid password for:", email); 
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    console.log("Login successful for:", email); // Log successful login
+    console.log("Login successful for:", email); 
     res.json({ message: "Login successful" });
   } catch (error) {
-    console.error("Login error:", error); // Log any errors
+    console.error("Login error:", error); 
     res.status(500).json({ message: "Error logging in", error });
   }
 });

@@ -102,54 +102,6 @@ router.get('/enrollments/pending', async (req, res) => {
   }
 });
 
-// // Approve or reject an enrollment
-// router.put('/enrollments/:enrollmentId', async (req, res) => {
-//   try {
-//     const { enrollmentId } = req.params;
-//     const { status, mentorId, employeeId } = req.body;
-    
-//     const enrollment = await Enrollment.findById(enrollmentId);
-    
-//     if (!enrollment) {
-//       return res.status(404).json({ message: 'Enrollment not found' });
-//     }
-    
-//     if (enrollment.status !== 'payment_verified') {
-//       return res.status(400).json({ message: 'Enrollment is not in a state that can be approved' });
-//     }
-    
-//     const employee = await Employee.findById(employeeId);
-//     if (!employee || employee.role !== 'Service manager') {
-//       return res.status(403).json({ message: 'Only service managers can approve enrollments' });
-//     }
-    
-//     enrollment.status = status;
-    
-//     if (status === 'approved' && mentorId) {
-//       // Verify that the mentor exists and has the correct role
-//       const mentor = await Employee.findOne({ _id: mentorId, role: 'mentor' });
-//       if (!mentor) {
-//         return res.status(404).json({ message: 'Mentor not found' });
-//       }
-//       enrollment.mentor = mentorId;
-//     }
-    
-//     await enrollment.save();
-    
-//     // If approved, increment course participants count
-//     if (status === 'approved') {
-//       await Course.findByIdAndUpdate(
-//         enrollment.course,
-//         { $inc: { currentParticipants: 1 } }
-//       );
-//     }
-    
-//     res.json({ message: `Enrollment ${status} successfully`, enrollment });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
 // Approve or reject an enrollment
 router.put('/enrollments/:enrollmentId', async (req, res) => {
   try {
@@ -198,38 +150,6 @@ router.get('/employees/trainers', async (req, res) => {
   }
 });
 
-
-// // Assign trainer to a course
-// router.put('/courses/:courseId/trainer', async (req, res) => {
-//   try {
-//     const { courseId } = req.params;
-//     const { trainerId, employeeId } = req.body;
-    
-//     const employee = await Employee.findById(employeeId);
-//     if (!employee || employee.role !== 'service_manager') {
-//       return res.status(403).json({ message: 'Only service managers can assign trainers' });
-//     }
-    
-//     const course = await Course.findById(courseId);
-//     if (!course) {
-//       return res.status(404).json({ message: 'Course not found' });
-//     }
-    
-//     // Verify that the trainer exists and has the correct role
-//     const trainer = await Employee.findOne({ _id: trainerId, role: 'trainer' });
-//     if (!trainer) {
-//       return res.status(404).json({ message: 'Trainer not found' });
-//     }
-    
-//     course.trainer = trainerId;
-//     await course.save();
-    
-//     res.json({ message: 'Trainer assigned successfully', course });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
 // Assign trainer to a course
 router.put('/courses/:courseId/trainer', async (req, res) => {
   try {
@@ -264,23 +184,6 @@ router.put('/courses/:courseId/trainer', async (req, res) => {
   }
 });
 
-
-
-// // Get completed courses waiting for approval
-// router.get('/courses/completed', async (req, res) => {
-//   try {
-//     const enrollments = await Enrollment.find({ status: 'completed' })
-//       .populate('youth', 'customerName email')
-//       .populate('course', 'title duration')
-//       .populate('trainer', 'firstName lastName');
-    
-//     res.json(enrollments);
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
-
 // Get completed courses waiting for approval
 router.get('/courses/completed', async (req, res) => {
   try {
@@ -302,53 +205,6 @@ router.get('/courses/completed', async (req, res) => {
   }
 });
 
-// // Approve course completion and issue certificate
-// router.post('/certificate/issue', async (req, res) => {
-//   try {
-//     const { enrollmentId, employeeId } = req.body;
-    
-//     const employee = await Employee.findById(employeeId);
-//     if (!employee || employee.role !== 'Service manager') {
-//       return res.status(403).json({ message: 'Only service managers can issue certificates' });
-//     }
-    
-//     const enrollment = await Enrollment.findById(enrollmentId)
-//       .populate('youth', 'customerName')
-//       .populate('course', 'title duration');
-    
-//     if (!enrollment) {
-//       return res.status(404).json({ message: 'Enrollment not found' });
-//     }
-    
-//     if (enrollment.status !== 'completed') {
-//       return res.status(400).json({ message: 'Course must be completed before issuing certificate' });
-//     }
-    
-//     // Check if certificate already exists
-//     const existingCertificate = await Certificate.findOne({ enrollment: enrollmentId });
-//     if (existingCertificate) {
-//       return res.status(400).json({ message: 'Certificate already issued for this enrollment' });
-//     }
-    
-//     // Generate a unique verification code
-//     const verificationCode = `MATBUS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-//     const certificate = new Certificate({
-//       youth: enrollment.youth._id,
-//       course: enrollment.course._id,
-//       enrollment: enrollmentId,
-//       issuedBy: employeeId,
-//       verificationCode,
-//       certificateUrl: `/certificates/${verificationCode}.pdf`
-//     });
-    
-//     await certificate.save();
-    
-//     res.status(201).json({ message: 'Certificate issued successfully', certificate });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
 
 // Approve course completion and issue certificate
 router.post('/certificate/issue', async (req, res) => {

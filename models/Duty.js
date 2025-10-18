@@ -7,10 +7,9 @@ const DutySchema = new mongoose.Schema({
   date: { type: Date, required: true },
   coordinator: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee", // community_service_coordinator
+    ref: "Employee", 
   },
 
-  // youths who have voluntarily enrolled
   enrolledYouths: [
     {
       youth: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
@@ -22,7 +21,7 @@ const DutySchema = new mongoose.Schema({
     },
   ],
 
-  capacity: { type: Number, default: 10 }, // optional: max youths allowed
+  capacity: { type: Number, default: 10 }, 
 
   report: {
     summary: String,

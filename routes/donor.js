@@ -1,20 +1,25 @@
 const express = require('express');
 const Donation = require('../models/Donation');
-const Customer = require('../models/Customer');
+const Employee = require('../models/Employee'); 
 const router = express.Router();
 
 // Make a donation
 router.post('/donate', async (req, res) => {
   try {
-    const { mpesaCode, amount, customerId } = req.body;
+    const { mpesaCode, amount, donorId } = req.body; 
     
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
+    const donor = await Employee.findById(donorId);
+    if (!donor) {
+      return res.status(404).json({ message: 'Donor not found' });
+    }
+
+    // ✅ ensure the donor has the correct role
+    if (donor.role !== 'Donor') {
+      return res.status(403).json({ message: 'Only users with role "Donor" can make donations' });
     }
     
     const donation = new Donation({
-      donor: customerId,
+      donor: donorId, 
       mpesaCode,
       amount,
       status: 'pending'
@@ -31,13 +36,13 @@ router.post('/donate', async (req, res) => {
   }
 });
 
-// Get donation history
-router.get('/donations/:customerId', async (req, res) => {
+// Get donation history (for a specific donor)
+router.get('/donations/:donorId', async (req, res) => {
   try {
-    const { customerId } = req.params;
+    const { donorId } = req.params;
     
-    const donations = await Donation.find({ donor: customerId })
-      .populate('approvedBy', 'firstName lastName');
+    const donations = await Donation.find({ donor: donorId })
+      .populate('approvedBy', 'firstName lastName role');
     
     res.json(donations);
   } catch (error) {
@@ -46,29 +51,30 @@ router.get('/donations/:customerId', async (req, res) => {
 });
 
 // Download receipt
-router.get('/donations/:donationId/receipt', async (req, res) => {
+router.get('/donations/:donationId/receipt/:donorId', async (req, res) => {
   try {
-    const { donationId } = req.params;
-    const { customerId } = req.query;
-    
-    const donation = await Donation.findOne({ 
-      _id: donationId, 
-      donor: customerId,
+    const { donationId, donorId } = req.params;
+
+    // Find the approved donation for that donor
+    const donation = await Donation.findOne({
+      _id: donationId,
+      donor: donorId,
       status: 'approved'
     });
-    
+
     if (!donation) {
       return res.status(404).json({ message: 'Approved donation not found' });
     }
-    
+
+    // Return a simple JSON receipt
     res.json({
       message: 'Receipt downloaded successfully',
       receipt: {
         donationId: donation._id,
-        donor: customerId,
+        donor: donorId,
         amount: donation.amount,
         date: donation.approvalDate,
-        receiptNumber: `REC-${donation._id.toString().substr(-6)}`
+        receiptNumber: `REC-${donation._id.toString().slice(-6)}`
       }
     });
   } catch (error) {

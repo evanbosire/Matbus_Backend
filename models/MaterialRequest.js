@@ -11,10 +11,10 @@ const materialRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true,
-    }, // trainer
-    course: { type: mongoose.Schema.Types.ObjectId, ref: "Course" }, // optional: course using the materials
+    }, 
+    course: { type: mongoose.Schema.Types.ObjectId, ref: "Course" }, 
     quantityRequested: { type: Number, required: true, min: 1 },
-    quantityIssued: { type: Number, default: 0 }, // what inventory manager actually released
+    quantityIssued: { type: Number, default: 0 }, 
     status: {
       type: String,
       enum: [
@@ -28,11 +28,10 @@ const materialRequestSchema = new mongoose.Schema(
     },
     note: String,
 
-    // audit
+   
     requestedAt: { type: Date, default: Date.now },
-    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, // inventory manager who released/rejected
-    processedAt: Date,
-    returnedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, // trainer who returns (can be same requestedBy)
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, 
+    returnedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" }, 
     returnedAt: Date,
   },
   { timestamps: true }
