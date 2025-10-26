@@ -93,38 +93,103 @@ router.patch("/employees/activate/:id", async (req, res) => {
 //   }
 // });
 
+// // POST /api/employee/login
+// router.post("/employees/login", async (req, res) => {
+//   const { email, password, role } = req.body;
+
+//   try {
+//     const employee = await Employee.findOne({ email, role });
+//     if (!employee || employee.password !== password) {
+//       return res.status(400).json({ message: "Invalid credentials or role." });
+//     }
+
+//     if (employee.status !== "active") {
+//       return res.status(403).json({ message: "Account not active." });
+//     }
+
+//     // Generate token for employee
+//     const token = jwt.sign(
+//       { employeeId: employee._id, role: employee.role },
+//       process.env.JWT_SECRET,
+//       { expiresIn: process.env.JWT_EXPIRES_IN }
+//     );
+
+//     // Return employee details for successful login
+//     res.status(200).json({
+//       email: employee.email,
+//       role: employee.role,
+//       token: token, // Add token
+//       userId: employee._id, // Add this line
+//       message: "Login successful"
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error, please try again later." });
+//   }
+// });
+
 // POST /api/employee/login
 router.post("/employees/login", async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
-    const employee = await Employee.findOne({ email, role });
-    if (!employee || employee.password !== password) {
-      return res.status(400).json({ message: "Invalid credentials or role." });
+    console.log("Login attempt:", { email, role: role?.trim() });
+
+    // Trim the role to handle any whitespace issues
+    const trimmedRole = role ? role.trim() : null;
+    
+    // Find employee by email and role (trimmed)
+    const employee = await Employee.findOne({ 
+      email: email.toLowerCase().trim(),
+      role: trimmedRole 
+    });
+
+    console.log("Found employee:", employee);
+
+    if (!employee) {
+      return res.status(400).json({ 
+        message: "No employee found with this email and role." 
+      });
+    }
+
+    // Compare passwords (plain text comparison as per your current setup)
+    if (employee.password !== password) {
+      return res.status(400).json({ 
+        message: "Invalid password." 
+      });
     }
 
     if (employee.status !== "active") {
-      return res.status(403).json({ message: "Account not active." });
+      return res.status(403).json({ 
+        message: "Your account is not active. Please contact administrator." 
+      });
     }
 
     // Generate token for employee
     const token = jwt.sign(
-      { employeeId: employee._id, role: employee.role },
+      { 
+        employeeId: employee._id, 
+        role: employee.role,
+        email: employee.email 
+      },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
     // Return employee details for successful login
     res.status(200).json({
       email: employee.email,
       role: employee.role,
-      token: token, // Add token
-      userId: employee._id, // Add this line
+      token: token,
+      userId: employee._id,
       message: "Login successful"
     });
+
   } catch (error) {
-    res.status(500).json({ message: "Server error, please try again later." });
+    console.error("Login error:", error);
+    res.status(500).json({ 
+      message: "Server error, please try again later.",
+      error: error.message 
+    });
   }
 });
-
 module.exports = router;
