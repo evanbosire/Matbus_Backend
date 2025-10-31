@@ -19,7 +19,7 @@ router.post("/employees", async (req, res) => {
     await newEmployee.save();
     res.status(201).json(newEmployee);
   } catch (error) {
-    console.error("Error saving employee:", error);
+    
     res.status(400).json({ message: error.message });
   }
 });
@@ -133,7 +133,7 @@ router.post("/employees/login", async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
-    console.log("Login attempt:", { email, role: role?.trim() });
+   
 
     // Trim the role to handle any whitespace issues
     const trimmedRole = role ? role.trim() : null;
@@ -143,8 +143,6 @@ router.post("/employees/login", async (req, res) => {
       email: email.toLowerCase().trim(),
       role: trimmedRole 
     });
-
-    console.log("Found employee:", employee);
 
     if (!employee) {
       return res.status(400).json({ 

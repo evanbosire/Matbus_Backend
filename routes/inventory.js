@@ -5,6 +5,17 @@ const Inventory  = require('../models/Inventory');
 const SupplyRequest = require('../models/SupplyRequest');
 const TrainingMaterial = require('../models/TrainingMaterial');
 
+
+// Get meterials from the db
+router.get('/training-materials', async (req, res) => {
+  try {
+    const materials = await TrainingMaterial.find();
+    res.json(materials);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Create supply request
 router.post('/supply-requests', async (req, res) => {
   try {

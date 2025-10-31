@@ -60,7 +60,7 @@ router.put('/payments/verify/:paymentId', async (req, res) => {
   }
 });
 
-
+//   ******************** DONATIONS ***************
 
 // Get all pending donations
 router.get('/donations/pending', async (req, res) => {

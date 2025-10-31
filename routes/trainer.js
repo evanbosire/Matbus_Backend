@@ -43,6 +43,43 @@ router.get('/:trainerId/courses', async (req, res) => {
 });
 
 
+// Mark course as completed
+router.put('/courses/:courseId/complete', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { employeeId } = req.body;
+    
+    const employee = await Employee.findById(employeeId);
+    if (!employee || employee.role !== 'Trainer') {
+      return res.status(403).json({ message: 'Only trainers can mark courses as completed' });
+    }
+    
+    // Verify that the trainer is assigned to this course
+    const course = await Course.findOne({ _id: courseId, trainer: employeeId });
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found or not assigned to you' });
+    }
+    
+    // Update all enrollments for this course to completed
+    await Enrollment.updateMany(
+      { course: courseId, status: 'approved' },
+      { 
+        status: 'completed',
+        completionDate: new Date()
+      }
+    );
+    
+    // Update course status
+    course.status = 'completed';
+    course.endDate = new Date();
+    await course.save();
+    
+    res.json({ message: 'Course marked as completed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get Enrollments so that the enrollmentId can be passed to the attendance route.
 router.get('/courses/:courseId/enrollments', async (req, res) => {
   const { courseId } = req.params;
@@ -50,7 +87,6 @@ router.get('/courses/:courseId/enrollments', async (req, res) => {
     .populate('youth', 'firstName lastName email');
   res.json(enrollments);
 });
-
 
 // Record attendance
 router.post('/attendance', async (req, res) => {
@@ -142,43 +178,6 @@ router.post('/material-request', async (req, res) => {
       quantity,
       remaining: inventory.quantity
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Mark course as completed
-router.put('/courses/:courseId/complete', async (req, res) => {
-  try {
-    const { courseId } = req.params;
-    const { employeeId } = req.body;
-    
-    const employee = await Employee.findById(employeeId);
-    if (!employee || employee.role !== 'Trainer') {
-      return res.status(403).json({ message: 'Only trainers can mark courses as completed' });
-    }
-    
-    // Verify that the trainer is assigned to this course
-    const course = await Course.findOne({ _id: courseId, trainer: employeeId });
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found or not assigned to you' });
-    }
-    
-    // Update all enrollments for this course to completed
-    await Enrollment.updateMany(
-      { course: courseId, status: 'approved' },
-      { 
-        status: 'completed',
-        completionDate: new Date()
-      }
-    );
-    
-    // Update course status
-    course.status = 'completed';
-    course.endDate = new Date();
-    await course.save();
-    
-    res.json({ message: 'Course marked as completed successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
