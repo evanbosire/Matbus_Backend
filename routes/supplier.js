@@ -3,6 +3,9 @@ const router = express.Router();
 const Employee = require('../models/Employee');
 const SupplyRequest = require('../models/SupplyRequest');
 
+const PDFDocument = require('pdfkit');
+const path = require('path');
+
 // Get supply requests from the inventory
 router.get('/supply-requests/pending', async (req, res) => {
   try {
@@ -91,5 +94,89 @@ router.put('/supply-requests/deliver/:id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Get all supplied materials (accepted, rejected, and paid)
+router.get('/supplied-materials', async (req, res) => {
+  try {
+    const requests = await SupplyRequest.find({
+      status: { $in: ['inventory_rejected', 'inventory_accepted', 'paid'] }
+    })
+      .populate('material', 'name description unit')
+      .populate('requestedBy', 'firstName lastName')
+      .populate('supplier', 'firstName lastName')
+      .sort({ deliveryDate: -1 });
+
+    res.json(requests);
+  } catch (err) {
+    console.error('Error fetching supplies:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// GET supply receipt (for paid supplies only)
+router.get('/supplies/:id/receipt', async (req, res) => {
+  try {
+    const supply = await SupplyRequest.findById(req.params.id)
+      .populate('material', 'name description unit')
+      .populate('requestedBy', 'firstName lastName email')
+      .populate('supplier', 'firstName lastName email phoneNumber');
+
+    if (!supply) {
+      return res.status(404).json({ message: 'Supply not found' });
+    }
+
+    // ✅ Check if supply status is "paid"
+    if (supply.status !== 'paid') {
+      return res.status(403).json({ message: 'Receipt can only be generated for paid supplies' });
+    }
+
+    // ✅ Create PDF document
+    const doc = new PDFDocument();
+
+    // Set the response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=supply-receipt-${supply._id}.pdf`);
+
+    // Pipe the PDF directly to response
+    doc.pipe(res);
+
+    // Add receipt title
+    doc.fontSize(18).text('Supply Receipt', { align: 'center' });
+    doc.moveDown();
+
+    // Supplier info
+    doc.fontSize(12).text(`Supplier: ${supply.supplier.firstName} ${supply.supplier.lastName}`);
+    doc.text(`Email: ${supply.supplier.email || 'N/A'}`);
+    doc.text(`Phone: ${supply.supplier.phoneNumber || 'N/A'}`);
+    doc.moveDown();
+
+    // Request info
+    doc.text(`Material: ${supply.material.name}`);
+    doc.text(`Quantity: ${supply.quantity} ${supply.material.unit}`);
+    doc.text(`Price per Unit: ${supply.pricePerUnit}`);
+    doc.text(`Total Price: ${supply.totalPrice}`);
+    doc.text(`Requested By: ${supply.requestedBy.firstName} ${supply.requestedBy.lastName}`);
+    doc.text(`Status: ${supply.status}`);
+    doc.text(`Delivery Date: ${new Date(supply.deliveryDate).toLocaleString()}`);
+    doc.text(`Acceptance Date: ${new Date(supply.acceptanceDate).toLocaleString()}`);
+    doc.moveDown();
+
+    // Delivery note
+    doc.text(`Delivery Note: ${supply.deliveryNote || 'No note provided'}`);
+    doc.moveDown();
+
+    // Footer
+    doc.text('--- End of Receipt ---', { align: 'center' });
+
+    // Finalize PDF
+    doc.end();
+
+  } catch (error) {
+    console.error('Error generating receipt:', error);
+    res.status(500).json({ message: 'Error generating receipt', error: error.message });
+  }
+});
+
 
 module.exports = router;
