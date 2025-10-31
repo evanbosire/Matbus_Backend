@@ -37,20 +37,20 @@ router.post('/supply-requests', async (req, res) => {
   }
 });
 
-// // Get delivered supplies for inventory manager to accept/reject
-// router.get('/supply-requests/delivered', async (req, res) => {
-//   try {
-//     const requests = await SupplyRequest.find({ status: 'delivered' })
-//       .populate('material', 'name description unit')
-//       .populate('requestedBy', 'firstName lastName')
-//       .populate('supplier', 'firstName lastName')
-//       .sort({ deliveryDate: -1 });
+// Get delivered supplies for inventory manager to accept/reject
+router.get('/delivered-supplies', async (req, res) => {
+  try {
+    const requests = await SupplyRequest.find({ status: 'delivered' })
+      .populate('material', 'name description unit')
+      .populate('requestedBy', 'firstName lastName')
+      .populate('supplier', 'firstName lastName')
+      .sort({ deliveryDate: -1 });
     
-//     res.json(requests);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 // Receive delivered supply
 router.put('/supply-requests/receive/:id', async (req, res) => {
   try {
