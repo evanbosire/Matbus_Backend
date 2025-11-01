@@ -294,51 +294,32 @@ async function withTransaction(fn) {
 }
 
 // GET /api/material-requests/materials
-// Get all available training materials from Inventory with populated material details
 router.get('/materials', async (req, res) => {
   try {
-    const materials = await Inventory.find({})
-      .populate('material', 'name unit')
-      .select('material quantity minStockLevel');
-    
-    // Transform the data to include material details
+    // Your materials logic here
+    const materials = await Inventory.find({}).populate('material', 'name unit');
     const transformedMaterials = materials.map(item => ({
       _id: item.material._id.toString(),
       name: item.material.name,
       unit: item.material.unit,
-      availableQuantity: item.quantity,
-      minStockLevel: item.minStockLevel
+      availableQuantity: item.quantity
     }));
-    
     res.json(transformedMaterials);
   } catch (err) {
-    console.error('Error fetching materials:', err);
     res.status(500).json({ message: err.message });
   }
 });
 
 // GET /api/material-requests/trainer/:trainerId
-// Get material requests for a specific trainer
 router.get('/trainer/:trainerId', async (req, res) => {
   try {
     const { trainerId } = req.params;
-    
-    // Validate trainer exists
-    const trainer = await Employee.findById(trainerId);
-    if (!trainer) {
-      return res.status(404).json({ message: 'Trainer not found' });
-    }
-
     const requests = await MaterialRequest.find({ requestedBy: trainerId })
       .populate('material', 'name unit')
-      .populate('requestedBy', 'firstName lastName email')
-      .populate('processedBy', 'firstName lastName')
-      .populate('returnedBy', 'firstName lastName')
+      .populate('requestedBy', 'firstName lastName')
       .sort({ createdAt: -1 });
-
     res.json(requests);
   } catch (err) {
-    console.error('Error fetching trainer requests:', err);
     res.status(500).json({ message: err.message });
   }
 });
