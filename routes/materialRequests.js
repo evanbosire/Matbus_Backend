@@ -508,7 +508,7 @@ router.put('/:id/return', async (req, res) => {
 
 // 2) Inventory manager lists requests (filter by status optionally)
 // GET /api/material-requests?status=pending
-router.get('/', async (req, res) => {
+router.get('/requested-trainer-materials', async (req, res) => {
   try {
     const { status, trainerId } = req.query;
     const query = {};
