@@ -23,7 +23,7 @@ async function withTransaction(fn) {
 // Get all available training materials
 router.get('/materials', async (req, res) => {
   try {
-    const materials = await TrainingMaterial.find({}, 'name unit');
+    const materials = await Inventory.find({}, 'name unit');
     res.json(materials);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
     }
 
     // 3️⃣ Confirm the training material exists
-    const material = await TrainingMaterial.findById(materialId);
+    const material = await Inventory.findById(materialId);
     if (!material) {
       return res.status(404).json({ message: 'Training material not found' });
     }
