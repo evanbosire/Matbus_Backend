@@ -200,122 +200,30 @@ router.post("/feedback/:enrollmentId", async (req, res) => {
 
 
 // Download certificates for a specific youth
-// router.get('/certificate/youth/:youthId', async (req, res) => {
-//   try {
-//     const { youthId } = req.params;
-
-//     const certificates = await Certificate.find({ youth: youthId })
-//       .populate('course', 'title duration')
-//       .populate('issuedBy', 'firstName lastName role')
-//       .sort({ createdAt: -1 });
-
-//     if (!certificates || certificates.length === 0) {
-//       return res.status(404).json({ message: 'No certificates found for this youth' });
-//     }
-
-//     res.status(200).json({
-//       message: 'Certificates retrieved successfully',
-//       certificates
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
-router.get('/certificates/download/:verificationCode', async (req, res) => {
+router.get('/certificate/youth/:youthId', async (req, res) => {
   try {
-    const { verificationCode } = req.params;
+    const { youthId } = req.params;
 
-    // Find certificate
-    const certificate = await Certificate.findOne({ verificationCode })
-      .populate('youth', 'customerName')
+    const certificates = await Certificate.find({ youth: youthId })
       .populate('course', 'title duration')
-      .populate('issuedBy', 'firstName lastName');
+      .populate('issuedBy', 'firstName lastName role')
+      .sort({ createdAt: -1 });
 
-    if (!certificate) {
-      return res.status(404).json({ message: 'Certificate not found' });
+    if (!certificates || certificates.length === 0) {
+      return res.status(404).json({ message: 'No certificates found for this youth' });
     }
 
-    // Set response headers for PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="certificate-${verificationCode}.pdf"`);
-
-    // Generate PDF on the fly
-    const PDFDocument = require('pdfkit');
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
-
-    // Pipe PDF to response
-    doc.pipe(res);
-
-    // === DESIGN ELEMENTS ===
-    const borderWidth = 20;
-    doc.rect(borderWidth / 2, borderWidth / 2, doc.page.width - borderWidth, doc.page.height - borderWidth)
-      .strokeColor('#004aad')
-      .lineWidth(3)
-      .stroke();
-
-    // Logo placeholder (you can add your logo later)
-    doc.moveDown(7);
-    
-    // Title
-    doc.font('Helvetica-Bold').fontSize(26).fillColor('#004aad')
-      .text('Certificate of Completion', { align: 'center' });
-
-    doc.moveDown(2);
-    doc.font('Helvetica').fontSize(16).fillColor('black')
-      .text(`This certifies that`, { align: 'center' });
-
-    doc.moveDown(1.2);
-    doc.font('Helvetica-Bold').fontSize(22)
-      .text(`${certificate.youth.customerName}`, { align: 'center' });
-
-    doc.moveDown(1);
-    doc.font('Helvetica').fontSize(16)
-      .text(`has successfully completed the course`, { align: 'center' });
-
-    doc.moveDown(0.5);
-    doc.font('Helvetica-Bold').fontSize(20).fillColor('#004aad')
-      .text(`${certificate.course.title}`, { align: 'center' });
-
-    // Handle duration format
-    let durationText = 'N/A';
-    if (typeof certificate.course.duration === 'object' && certificate.course.duration !== null) {
-      durationText = `${certificate.course.duration.value} ${certificate.course.duration.unit}`;
-    } else if (typeof certificate.course.duration === 'string') {
-      durationText = certificate.course.duration;
-    }
-
-    doc.moveDown(0.5);
-    doc.font('Helvetica').fontSize(14).fillColor('black')
-      .text(`Course Duration: ${durationText}`, { align: 'center' });
-
-    // Verification code & date
-    doc.moveDown(2);
-    doc.font('Helvetica').fontSize(12)
-      .text(`Verification Code: ${certificate.verificationCode}`, { align: 'center' });
-    doc.text(`Issued on: ${new Date(certificate.issueDate).toLocaleDateString()}`, { align: 'center' });
-
-    // Signature
-    doc.moveDown(3);
-    doc.font('Helvetica').fontSize(12).text('_____________________________', { align: 'center' });
-    doc.font('Helvetica').fontSize(12).text(`${certificate.issuedBy.firstName} ${certificate.issuedBy.lastName}`, { align: 'center' });
-    doc.text('Service Manager', { align: 'center' });
-
-    // Footer
-    doc.moveDown(4);
-    doc.fontSize(10).fillColor('#777')
-      .text('MATBUS Training Institute', { align: 'center' })
-      .text('P.O. Box 123 - Nairobi, Kenya', { align: 'center' })
-      .text('www.matbus.ac.ke', { align: 'center' });
-
-    doc.end();
+    res.status(200).json({
+      message: 'Certificates retrieved successfully',
+      certificates
+    });
 
   } catch (error) {
-    console.error('Error generating certificate PDF:', error);
-    res.status(500).json({ message: 'Failed to generate certificate' });
+    res.status(500).json({ message: error.message });
   }
 });
+
+
 
 // ************ COMMUNITY SERVICE VOLUNTEER ROLES ************** //
 
