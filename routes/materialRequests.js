@@ -19,6 +19,17 @@ async function withTransaction(fn) {
   return result;
 }
 
+// GET /api/material-requests/materials
+// Get all available training materials
+router.get('/materials', async (req, res) => {
+  try {
+    const materials = await TrainingMaterial.find({}, 'name unit');
+    res.json(materials);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // 1) Trainer creates a material request
 // POST /api/material-requests
 // Trainer requests training materials
@@ -66,6 +77,76 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+// 5) Trainer returns issued materials to inventory
+// PUT /api/material-requests/:id/return
+// body: { employeeId, quantityToReturn }  (employeeId should be the trainer who requested)
+router.put('/:id/return', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { employeeId, quantityToReturn } = req.body;
+
+    if (!employeeId || !quantityToReturn) {
+      return res.status(400).json({ message: 'employeeId and quantityToReturn required' });
+    }
+
+    const trainer = await Employee.findById(employeeId);
+    if (!trainer || trainer.role !== 'Trainer') {
+      return res.status(403).json({ message: 'Only trainers can return materials' });
+    }
+
+    const mr = await MaterialRequest.findById(id);
+    if (!mr) return res.status(404).json({ message: 'Material request not found' });
+    if (mr.requestedBy.toString() !== employeeId) {
+      return res.status(403).json({ message: 'You did not request this material' });
+    }
+    if (mr.status !== 'released' && mr.status !== 'partially_returned') {
+      return res.status(400).json({ message: 'Material has not been released or already returned' });
+    }
+
+    const maxReturnable = mr.quantityIssued - (mr.quantityReturned || 0);
+    if (quantityToReturn <= 0 || quantityToReturn > maxReturnable) {
+      return res.status(400).json({ message: `quantityToReturn must be >0 and <= ${maxReturnable}` });
+    }
+
+    // transactionally increment inventory, update MR
+    const doReturn = async (session) => {
+      let inv = await Inventory.findOne({ material: mr.material }).session(session);
+      if (!inv) {
+        // create inventory record if none exists
+        inv = new Inventory({ material: mr.material, quantity: 0 });
+      }
+      inv.quantity += quantityToReturn;
+      await inv.save({ session });
+
+      // update material request
+      mr.quantityReturned = (mr.quantityReturned || 0) + quantityToReturn;
+      mr.returnedBy = trainer._id;
+      mr.returnedAt = new Date();
+
+      if (mr.quantityReturned === mr.quantityIssued) {
+        mr.status = 'returned';
+      } else {
+        mr.status = 'partially_returned';
+      }
+      await mr.save({ session });
+
+      return { inventory: inv, materialRequest: mr };
+    };
+
+    let result;
+    try {
+      result = await withTransaction(doReturn);
+    } catch (txErr) {
+      return res.status(500).json({ message: txErr.message });
+    }
+
+    await mr.populate('material', 'name unit');
+    res.json({ message: 'Return processed', materialRequest: mr, inventory: result.inventory });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // 2) Inventory manager lists requests (filter by status optionally)
 // GET /api/material-requests?status=pending
@@ -187,74 +268,6 @@ router.put('/:id/reject', async (req, res) => {
 });
 
 
-// 5) Trainer returns issued materials to inventory
-// PUT /api/material-requests/:id/return
-// body: { employeeId, quantityToReturn }  (employeeId should be the trainer who requested)
-router.put('/:id/return', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { employeeId, quantityToReturn } = req.body;
 
-    if (!employeeId || !quantityToReturn) {
-      return res.status(400).json({ message: 'employeeId and quantityToReturn required' });
-    }
-
-    const trainer = await Employee.findById(employeeId);
-    if (!trainer || trainer.role !== 'Trainer') {
-      return res.status(403).json({ message: 'Only trainers can return materials' });
-    }
-
-    const mr = await MaterialRequest.findById(id);
-    if (!mr) return res.status(404).json({ message: 'Material request not found' });
-    if (mr.requestedBy.toString() !== employeeId) {
-      return res.status(403).json({ message: 'You did not request this material' });
-    }
-    if (mr.status !== 'released' && mr.status !== 'partially_returned') {
-      return res.status(400).json({ message: 'Material has not been released or already returned' });
-    }
-
-    const maxReturnable = mr.quantityIssued - (mr.quantityReturned || 0);
-    if (quantityToReturn <= 0 || quantityToReturn > maxReturnable) {
-      return res.status(400).json({ message: `quantityToReturn must be >0 and <= ${maxReturnable}` });
-    }
-
-    // transactionally increment inventory, update MR
-    const doReturn = async (session) => {
-      let inv = await Inventory.findOne({ material: mr.material }).session(session);
-      if (!inv) {
-        // create inventory record if none exists
-        inv = new Inventory({ material: mr.material, quantity: 0 });
-      }
-      inv.quantity += quantityToReturn;
-      await inv.save({ session });
-
-      // update material request
-      mr.quantityReturned = (mr.quantityReturned || 0) + quantityToReturn;
-      mr.returnedBy = trainer._id;
-      mr.returnedAt = new Date();
-
-      if (mr.quantityReturned === mr.quantityIssued) {
-        mr.status = 'returned';
-      } else {
-        mr.status = 'partially_returned';
-      }
-      await mr.save({ session });
-
-      return { inventory: inv, materialRequest: mr };
-    };
-
-    let result;
-    try {
-      result = await withTransaction(doReturn);
-    } catch (txErr) {
-      return res.status(500).json({ message: txErr.message });
-    }
-
-    await mr.populate('material', 'name unit');
-    res.json({ message: 'Return processed', materialRequest: mr, inventory: result.inventory });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
 
 module.exports = router;
