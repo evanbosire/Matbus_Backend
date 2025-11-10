@@ -227,6 +227,36 @@ router.post('/tasks', async (req, res) => {
   }
 });
 
+// Duties Manager — Approve Task Completion
+router.put('/tasks/:taskId/approve', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { employeeId } = req.body;
+
+    const manager = await Employee.findById(employeeId);
+    if (!manager || manager.role.toLowerCase() !== 'Duties manager') {
+      return res.status(403).json({ message: 'Only duties managers can approve tasks.' });
+    }
+
+    const task = await CommunityService.findById(taskId);
+    if (!task) return res.status(404).json({ message: 'Task not found.' });
+
+    const allCompleted = task.volunteers.every(v => v.status === 'completed');
+    if (!allCompleted) {
+      return res.status(400).json({ message: 'All volunteers must complete their tasks first.' });
+    }
+
+    task.status = 'completed';
+    task.completionDate = new Date();
+    task.approvedBy = employeeId;
+
+    await task.save();
+    res.json({ message: 'Task completion approved successfully.', task });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Youth — View All Open Tasks
 router.get('/tasks', async (req, res) => {
   try {
