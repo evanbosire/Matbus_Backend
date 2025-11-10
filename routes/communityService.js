@@ -198,7 +198,30 @@ const router = express.Router();
 //   }
 // });
 
+// Get Coordinator Employee
+// GET all employees with role 'Community Service Coordinator'
+router.get('/employees/coordinators', async (req, res) => {
+  try {
+    // Fetch employees where the role matches (case-insensitive)
+    const coordinators = await Employee.find({
+      role: { $regex: /^community service coordinator$/i }
+    }).select('firstName lastName email phoneNumber role');
 
+    // Check if any coordinators exist
+    if (coordinators.length === 0) {
+      return res.status(404).json({ message: 'No community service coordinators found.' });
+    }
+
+    // Return list of coordinators
+    res.status(200).json({
+      message: 'Community service coordinators fetched successfully.',
+      count: coordinators.length,
+      coordinators
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error retrieving coordinators.', error: error.message });
+  }
+});
 // Duties Manager — Post a Task
 router.post('/tasks', async (req, res) => {
   try {
