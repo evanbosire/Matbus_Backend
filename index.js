@@ -22,7 +22,7 @@ const donorRoutes = require('./routes/donor');
 const mentorRoutes = require('./routes/mentor');
 const materialRoutes = require('./routes/materialRequests');
 const dutiesManagerRoutes = require('./routes/dutiesManager');
-const coordinatorRoutes = require('./routes/coordinator')
+
 // const authRoutes = require('./routes/auth');
 
 const app = express();
@@ -79,7 +79,7 @@ app.use('/certificates', express.static(path.join(__dirname, 'certificates')));
 
 app.use('/api/duties-manager', dutiesManagerRoutes)
 // -> youth apis comes here to view available duties
-app.use('/api/service-coordinator', coordinatorRoutes)
+
 
 
 
