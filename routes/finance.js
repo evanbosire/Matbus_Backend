@@ -10,6 +10,7 @@ const router = express.Router();
 
 const SupplyPayment = require('../models/SupplyPayment');
 const { validateMpesaCode } = require('../utils/validateMpesaCode');
+const Finance = require('../models/Finance');
 
 
 // Get all pending payments
@@ -62,6 +63,51 @@ router.put('/payments/verify/:paymentId', async (req, res) => {
 
 //   ******************** DONATIONS ***************
 
+// // Get all pending donations
+// router.get('/donations/pending', async (req, res) => {
+//   try {
+//     const donations = await Donation.find({ status: 'pending' })
+//       .populate('donor', 'firstName lastName email');
+    
+//     res.json(donations);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
+
+// // Approve or reject a donation
+// router.put('/donations/:donationId', async (req, res) => {
+//   try {
+//     const { donationId } = req.params;
+//     const { status, employeeId } = req.body;
+    
+//     const donation = await Donation.findById(donationId);
+    
+//     if (!donation) {
+//       return res.status(404).json({ message: 'Donation not found' });
+//     }
+    
+//     if (donation.status !== 'pending') {
+//       return res.status(400).json({ message: 'Donation already processed' });
+//     }
+    
+//     const employee = await Employee.findById(employeeId);
+//     if (!employee || employee.role !== 'Finance manager') {
+//       return res.status(403).json({ message: 'Only finance managers can approve donations' });
+//     }
+    
+//     donation.status = status;
+//     donation.approvedBy = employeeId;
+//     donation.approvalDate = new Date();
+    
+//     await donation.save();
+    
+//     res.json({ message: `Donation ${status} successfully`, donation });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
+
 // Get all pending donations
 router.get('/donations/pending', async (req, res) => {
   try {
@@ -100,12 +146,87 @@ router.put('/donations/:donationId', async (req, res) => {
     donation.approvalDate = new Date();
     
     await donation.save();
+
+    // If donation is approved, update finance records
+    if (status === 'approved') {
+      await updateFinanceRecords(donation);
+    }
     
     res.json({ message: `Donation ${status} successfully`, donation });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Get finance dashboard data
+router.get('/dashboard', async (req, res) => {
+  try {
+    const finance = await Finance.getFinanceRecord();
+    const summary = finance.getSummary();
+    
+    // Get recent donations for dashboard
+    const recentDonations = await Donation.find({ status: 'approved' })
+      .populate('donor', 'firstName lastName')
+      .populate('approvedBy', 'firstName lastName')
+      .sort({ approvalDate: -1 })
+      .limit(5);
+
+    res.json({
+      ...summary,
+      recentDonations,
+      monthlyBreakdown: finance.monthlyBreakdown.sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.month - a.month;
+      }).slice(0, 12), // Last 12 months
+      currentMonthStats: finance.currentMonthStats
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add expense endpoint
+router.post('/expenses', async (req, res) => {
+  try {
+    const { description, amount, category, employeeId, receiptUrl } = req.body;
+    
+    const employee = await Employee.findById(employeeId);
+    if (!employee || employee.role !== 'Finance manager') {
+      return res.status(403).json({ message: 'Only finance managers can add expenses' });
+    }
+    
+    const finance = await Finance.getFinanceRecord();
+    await finance.addExpense(description, amount, category, employeeId, receiptUrl);
+    
+    res.json({ 
+      message: 'Expense recorded successfully',
+      expense: finance.expenseRecords[finance.expenseRecords.length - 1]
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get expense records
+router.get('/expenses', async (req, res) => {
+  try {
+    const finance = await Finance.getFinanceRecord();
+    res.json(finance.expenseRecords.sort((a, b) => new Date(b.date) - new Date(a.date)));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Helper function to update finance records
+async function updateFinanceRecords(donation) {
+  try {
+    const finance = await Finance.getFinanceRecord();
+    await finance.addDonation(donation._id, donation.amount, donation.donor);
+    console.log(`Finance updated: +KES ${donation.amount}`);
+  } catch (error) {
+    console.error('Error updating finance records:', error);
+  }
+}
 
 // Process supplier payment *******
 // Get payable supplies
