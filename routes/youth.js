@@ -103,8 +103,7 @@ router.get("/enrollments/:customerId", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-// Download Receipt API (latest verified payment for a youth)
+// Youth to Download Receipt API 
 router.get("/payments/receipt/:youthId", async (req, res) => {
   try {
     const { youthId } = req.params;
@@ -114,17 +113,19 @@ router.get("/payments/receipt/:youthId", async (req, res) => {
       payer: youthId,
       status: "verified",
     })
-      .sort({ verificationDate: -1 }) // get the latest
-      .populate("payer")
-      .populate("course")
-      .populate("verifiedBy");
+      .sort({ verificationDate: -1 })
+      .populate("payer", "customerName email phone")
+      .populate("course", "title")
+      .populate("verifiedBy", "firstName lastName role");
 
     if (!payment) {
-      return res.status(404).json({ message: "No verified payment found for this youth" });
+      return res
+        .status(404)
+        .json({ message: "No verified payment found for this youth" });
     }
 
     // 2. Setup PDF document
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=receipt_${payment._id}.pdf`
@@ -133,28 +134,88 @@ router.get("/payments/receipt/:youthId", async (req, res) => {
 
     doc.pipe(res);
 
-    // Title
-    doc.fontSize(20).text("Payment Receipt", { align: "center" });
+    /*
+     * =========================
+     *     HEADER SECTION
+     * =========================
+     */
+    doc
+      .fontSize(26)
+      .font("Helvetica-Bold")
+      .text("MATBUS", { align: "center" });
+
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .text("YOUTH PAYMENT RECEIPT", { align: "center" });
+
     doc.moveDown();
 
-    // Payment details
-    doc.fontSize(14).text(`Receipt No: ${payment._id}`);
+    // Horizontal divider
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(550, doc.y)
+      .stroke();
+
+    doc.moveDown();
+
+    /*
+     * =========================
+     *    PAYMENT DETAILS
+     * =========================
+     */
+
+    const payerName = payment.payer?.customerName || "Unknown Payer";
+    const payerEmail = payment.payer?.email || "No Email";
+    const courseTitle = payment.course?.title || "Not Applicable";
+
+    doc.fontSize(14).font("Helvetica");
+
+    doc.text(`Receipt No: ${payment._id}`);
     doc.text(`Transaction Code: ${payment.mpesaCode}`);
-    doc.text(`Amount: KES ${payment.amount}`);
-    doc.text(`Course: ${payment.course?.name || "N/A"}`);
-    doc.text(`Payer: ${payment.payer?.name || "N/A"} (${payment.payer?.email})`);
-    doc.text(`Date: ${new Date(payment.verificationDate).toLocaleString()}`);
-    doc.text(`Verified By: ${payment.verifiedBy?.name || "Finance Manager"}`);
+    doc.text(`Amount Paid: KES ${payment.amount}`);
+    doc.text(`Payment Type: ${payment.type}`);
+    doc.text(`Course: ${courseTitle}`);
+    doc.text(`Payer: ${payerName} (${payerEmail})`);
+    doc.text(
+      `Date Verified: ${new Date(payment.verificationDate).toLocaleString()}`
+    );
 
-    doc.moveDown();
+    const verifierName = payment.verifiedBy
+      ? `${payment.verifiedBy.firstName} ${payment.verifiedBy.lastName}`
+      : "Finance Manager";
+
+    doc.text(`Verified By: ${verifierName}`);
+
+    doc.moveDown(2);
+
+    /*
+     * =========================
+     *     FOOTER SECTION
+     * =========================
+     */
+    doc.fontSize(14).font("Helvetica-Oblique");
     doc.text("Thank you for your payment!", { align: "center" });
 
-    // Finalize PDF
+    doc.moveDown(1);
+
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .text("MATBUS © 2025 – All Rights Reserved • Powered By: Aora Softwares", {
+        align: "center",
+      });
+
     doc.end();
   } catch (error) {
+    console.error("Receipt Generation Error:", error);
     res.status(500).json({ message: error.message });
   }
 });
+
+
 
 // Submit feedback for a completed course
 router.post("/feedback/:enrollmentId", async (req, res) => {
