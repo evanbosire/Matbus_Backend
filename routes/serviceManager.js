@@ -418,6 +418,7 @@ router.get("/courses/completed", async (req, res) => {
 //   }
 // });
 
+
 // Approve course completion and issue certificate
 router.post("/certificate/issue", async (req, res) => {
   try {
@@ -467,7 +468,7 @@ router.post("/certificate/issue", async (req, res) => {
     const chunks = [];
     doc.on('data', (chunk) => chunks.push(chunk));
     
-    // === DESIGN ELEMENTS (EXACT MATCH TO YOUR ORIGINAL) ===
+    // === DESIGN ELEMENTS ===
     
     // Border
     const borderWidth = 20;
@@ -522,7 +523,7 @@ router.post("/certificate/issue", async (req, res) => {
       .fillColor("#004aad")
       .text(`${enrollment.course.title}`, { align: "center" });
 
-    // ✅ FIXED: Handle duration format
+    // Handle duration format
     let durationText = "N/A";
     if (
       typeof enrollment.course.duration === "object" &&
@@ -578,12 +579,14 @@ router.post("/certificate/issue", async (req, res) => {
       try {
         const pdfBuffer = Buffer.concat(chunks);
         
-        // Upload to Cloudinary
+        // ✅✅✅ UPDATED: Upload to Cloudinary with PUBLIC ACCESS ✅✅✅
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             resource_type: 'raw',
             public_id: `certificates/${verificationCode}`,
             format: 'pdf',
+            type: 'upload', // ✅ Makes it publicly accessible
+            access_mode: 'public', // ✅ Explicitly set public access
           },
           async (error, result) => {
             if (error) {
