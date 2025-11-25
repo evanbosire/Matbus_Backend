@@ -8,8 +8,7 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
-const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
-
+const BASE_URL = process.env.BASE_URL
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
