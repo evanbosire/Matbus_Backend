@@ -10,6 +10,18 @@ const path = require("path");
 const PDFDocument = require("pdfkit");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');
+
+
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 // service manager to post a course for youths to register
 
 // Post a new course
@@ -444,60 +456,174 @@ router.post("/certificate/issue", async (req, res) => {
         .json({ message: "Certificate already issued for this enrollment" });
     }
 
-    // 4️⃣ Generate verification code & file info
+    // 4️⃣ Generate verification code
     const verificationCode = `MATBUS-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 10)}`;
-    const fileName = `${verificationCode}.pdf`;
-    const certDir = path.join(__dirname, "../certificates");
-    if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
-    const filePath = path.join(certDir, fileName);
 
-    // 🔹 DEBUG LOG: exact file path
-    console.log("Saving PDF file to:", filePath);
+    // 5️⃣ Generate PDF in memory (not on disk)
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    
+    // Collect PDF data in memory
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    
+    // === DESIGN ELEMENTS (EXACT MATCH TO YOUR ORIGINAL) ===
+    
+    // Border
+    const borderWidth = 20;
+    doc
+      .rect(
+        borderWidth / 2,
+        borderWidth / 2,
+        doc.page.width - borderWidth,
+        doc.page.height - borderWidth
+      )
+      .strokeColor("#004aad")
+      .lineWidth(3)
+      .stroke();
 
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
-    // const certificateUrl = `${BASE_URL}/api/youth/certificates/download/${verificationCode}`;
-    const certificateUrl = `/api/youth/certificates/download/${verificationCode}`;
+    // Logo (if exists)
+    const logoPath = path.join(__dirname, "../assets/logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, doc.page.width / 2 - 40, 70, { width: 80 });
+    }
 
-    // 5️⃣ Save certificate to DB
-    const certificate = new Certificate({
-      youth: enrollment.youth._id,
-      course: enrollment.course._id,
-      enrollment: enrollmentId,
-      issuedBy: employeeId,
-      verificationCode,
-      certificateUrl,
+    // Title
+    doc.moveDown(7);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(26)
+      .fillColor("#004aad")
+      .text("Certificate of Completion", { align: "center" });
+
+    doc.moveDown(2);
+    doc
+      .font("Helvetica")
+      .fontSize(16)
+      .fillColor("black")
+      .text(`This certifies that`, { align: "center" });
+
+    doc.moveDown(1.2);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(22)
+      .text(`${enrollment.youth.customerName}`, { align: "center" });
+
+    doc.moveDown(1);
+    doc
+      .font("Helvetica")
+      .fontSize(16)
+      .text(`has successfully completed the course`, { align: "center" });
+
+    doc.moveDown(0.5);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .fillColor("#004aad")
+      .text(`${enrollment.course.title}`, { align: "center" });
+
+    // ✅ FIXED: Handle duration format
+    let durationText = "N/A";
+    if (
+      typeof enrollment.course.duration === "object" &&
+      enrollment.course.duration !== null
+    ) {
+      durationText = `${enrollment.course.duration.value} ${enrollment.course.duration.unit}`;
+    } else if (typeof enrollment.course.duration === "string") {
+      durationText = enrollment.course.duration;
+    }
+
+    doc.moveDown(0.5);
+    doc
+      .font("Helvetica")
+      .fontSize(14)
+      .fillColor("black")
+      .text(`Course Duration: ${durationText}`, { align: "center" });
+
+    // Verification code & date
+    doc.moveDown(2);
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .text(`Verification Code: ${verificationCode}`, { align: "center" });
+    doc.text(`Issued on: ${new Date().toLocaleDateString()}`, {
+      align: "center",
     });
 
-    await certificate.save();
+    // Signature
+    doc.moveDown(3);
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .text("_____________________________", { align: "center" });
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .text(`${employee.firstName} ${employee.lastName}`, { align: "center" });
+    doc.text("Service Manager", { align: "center" });
 
-    // 6️⃣ Generate PDF
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
-    const stream = fs.createWriteStream(filePath);
-    doc.pipe(stream);
-
-    // === PDF DESIGN ===
-    doc.fontSize(20).text(`Certificate for ${enrollment.youth.customerName}`, { align: "center" });
-    doc.text(`Course: ${enrollment.course.title}`, { align: "center" });
-    doc.text(`Verification Code: ${verificationCode}`, { align: "center" });
+    // Footer
+    doc.moveDown(4);
+    doc
+      .fontSize(10)
+      .fillColor("#777")
+      .text("MATBUS Training Institute", { align: "center" })
+      .text("P.O. Box 123 - Nairobi, Kenya", { align: "center" })
+      .text("www.matbus.ac.ke", { align: "center" });
+    
     doc.end();
 
-    // 7️⃣ Wait for PDF to finish writing before responding
-    stream.on("finish", () => {
-      console.log("PDF successfully generated:", filePath);
-      res.status(201).json({
-        message: "Certificate issued successfully",
-        certificate,
-        pdfPath: filePath // Optional: return path for debugging
-      });
+    // 6️⃣ Wait for PDF to complete, then upload to Cloudinary
+    doc.on('end', async () => {
+      try {
+        const pdfBuffer = Buffer.concat(chunks);
+        
+        // Upload to Cloudinary
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'raw',
+            public_id: `certificates/${verificationCode}`,
+            format: 'pdf',
+          },
+          async (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              return res.status(500).json({ message: 'Failed to upload certificate' });
+            }
+
+            console.log('✅ Certificate uploaded to Cloudinary:', result.secure_url);
+
+            // 7️⃣ Save certificate to DB with Cloudinary URL
+            const certificate = new Certificate({
+              youth: enrollment.youth._id,
+              course: enrollment.course._id,
+              enrollment: enrollmentId,
+              issuedBy: employeeId,
+              verificationCode,
+              certificateUrl: result.secure_url, // Cloudinary URL
+            });
+
+            await certificate.save();
+
+            res.status(201).json({
+              message: "Certificate issued successfully",
+              certificate,
+            });
+          }
+        );
+
+        // Pipe buffer to Cloudinary
+        streamifier.createReadStream(pdfBuffer).pipe(uploadStream);
+        
+      } catch (uploadError) {
+        console.error('Upload process error:', uploadError);
+        res.status(500).json({ message: 'Failed to process certificate' });
+      }
     });
 
-    stream.on("error", (err) => {
-      console.error("Error generating PDF:", err);
-      res.status(500).json({ message: "Failed to generate certificate" });
-    });
   } catch (error) {
+    console.error('Certificate issue error:', error);
     res.status(500).json({ message: error.message });
   }
 });
