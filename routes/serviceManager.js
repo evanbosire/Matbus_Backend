@@ -225,6 +225,188 @@ router.get("/courses/completed", async (req, res) => {
   }
 });
 
+// // Approve course completion and issue certificate
+// router.post("/certificate/issue", async (req, res) => {
+//   try {
+//     const { enrollmentId, employeeId } = req.body;
+
+//     // 1️⃣ Validate employee (must be service manager)
+//     const employee = await Employee.findById(employeeId);
+//     if (!employee || employee.role !== "Service manager") {
+//       return res
+//         .status(403)
+//         .json({ message: "Only service managers can issue certificates" });
+//     }
+
+//     // 2️⃣ Get enrollment data
+//     const enrollment = await Enrollment.findById(enrollmentId)
+//       .populate("youth", "customerName")
+//       .populate("course", "title duration");
+//     if (!enrollment)
+//       return res.status(404).json({ message: "Enrollment not found" });
+//     if (enrollment.status !== "completed")
+//       return res
+//         .status(400)
+//         .json({
+//           message: "Course must be completed before issuing certificate",
+//         });
+
+//     // 3️⃣ Ensure no duplicate certificate
+//     const existingCertificate = await Certificate.findOne({
+//       enrollment: enrollmentId,
+//     });
+//     if (existingCertificate)
+//       return res
+//         .status(400)
+//         .json({ message: "Certificate already issued for this enrollment" });
+
+//     // 4️⃣ Create certificate record
+//     const verificationCode = `MATBUS-${enrollmentId}`;
+//     const fileName = `certificate-${enrollmentId}.pdf`;
+//     const certificateUrl = `${BASE_URL}/certificates/${fileName}`;
+
+
+//     const certificate = new Certificate({
+//       youth: enrollment.youth._id,
+//       course: enrollment.course._id,
+//       enrollment: enrollmentId,
+//       issuedBy: employeeId,
+//       verificationCode,
+//       certificateUrl,
+//     });
+//     await certificate.save();
+
+//     // 5️⃣ Generate PDF
+//     const certDir = path.join(__dirname, "../certificates");
+//     if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
+
+//     const filePath = path.join(certDir, fileName);
+
+//     const doc = new PDFDocument({ size: "A4", margin: 50 });
+//     const stream = fs.createWriteStream(filePath);
+//     doc.pipe(stream);
+
+//     // === DESIGN ELEMENTS ===
+//     const borderWidth = 20;
+//     doc
+//       .rect(
+//         borderWidth / 2,
+//         borderWidth / 2,
+//         doc.page.width - borderWidth,
+//         doc.page.height - borderWidth
+//       )
+//       .strokeColor("#004aad")
+//       .lineWidth(3)
+//       .stroke();
+
+//     // Logo
+//     const logoPath = path.join(__dirname, "../assets/logo.png");
+//     if (fs.existsSync(logoPath)) {
+//       doc.image(logoPath, doc.page.width / 2 - 40, 70, { width: 80 });
+//     }
+
+//     // Title
+//     doc.moveDown(7);
+//     doc
+//       .font("Helvetica-Bold")
+//       .fontSize(26)
+//       .fillColor("#004aad")
+//       .text("Certificate of Completion", { align: "center" });
+
+//     doc.moveDown(2);
+//     doc
+//       .font("Helvetica")
+//       .fontSize(16)
+//       .fillColor("black")
+//       .text(`This certifies that`, { align: "center" });
+
+//     doc.moveDown(1.2);
+//     doc
+//       .font("Helvetica-Bold")
+//       .fontSize(22)
+//       .text(`${enrollment.youth.customerName}`, { align: "center" });
+
+//     doc.moveDown(1);
+//     doc
+//       .font("Helvetica")
+//       .fontSize(16)
+//       .text(`has successfully completed the course`, { align: "center" });
+
+//     doc.moveDown(0.5);
+//     doc
+//       .font("Helvetica-Bold")
+//       .fontSize(20)
+//       .fillColor("#004aad")
+//       .text(`${enrollment.course.title}`, { align: "center" });
+
+//     // ✅ FIXED: Handle duration format
+//     let durationText = "N/A";
+//     if (
+//       typeof enrollment.course.duration === "object" &&
+//       enrollment.course.duration !== null
+//     ) {
+//       durationText = `${enrollment.course.duration.value} ${enrollment.course.duration.unit}`;
+//     } else if (typeof enrollment.course.duration === "string") {
+//       durationText = enrollment.course.duration;
+//     }
+
+//     doc.moveDown(0.5);
+//     doc
+//       .font("Helvetica")
+//       .fontSize(14)
+//       .fillColor("black")
+//       .text(`Course Duration: ${durationText}`, { align: "center" });
+
+//     // Verification code & date
+//     doc.moveDown(2);
+//     doc
+//       .font("Helvetica")
+//       .fontSize(12)
+//       .text(`Verification Code: ${verificationCode}`, { align: "center" });
+//     doc.text(`Issued on: ${new Date().toLocaleDateString()}`, {
+//       align: "center",
+//     });
+
+//     // Signature
+//     doc.moveDown(3);
+//     doc
+//       .font("Helvetica")
+//       .fontSize(12)
+//       .text("_____________________________", { align: "center" });
+//     doc
+//       .font("Helvetica")
+//       .fontSize(12)
+//       .text(`${employee.firstName} ${employee.lastName}`, { align: "center" });
+//     doc.text("Service Manager", { align: "center" });
+
+//     // Footer
+//     doc.moveDown(4);
+//     doc
+//       .fontSize(10)
+//       .fillColor("#777")
+//       .text("MATBUS Training Institute", { align: "center" })
+//       .text("P.O. Box 123 - Nairobi, Kenya", { align: "center" })
+//       .text("www.matbus.ac.ke", { align: "center" });
+
+//     doc.end();
+
+//     stream.on("finish", () => {
+//       console.log("✅ Certificate PDF generated:", filePath);
+//     });
+
+//     // 6️⃣ Response with full URL
+//     res.status(201).json({
+//       message: "Certificate issued successfully",
+//       certificate: {
+//         ...certificate._doc,
+//         certificateUrl: certificateUrl,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
+
 // Approve course completion and issue certificate
 router.post("/certificate/issue", async (req, res) => {
   try {
@@ -242,30 +424,43 @@ router.post("/certificate/issue", async (req, res) => {
     const enrollment = await Enrollment.findById(enrollmentId)
       .populate("youth", "customerName")
       .populate("course", "title duration");
+
     if (!enrollment)
       return res.status(404).json({ message: "Enrollment not found" });
-    if (enrollment.status !== "completed")
-      return res
-        .status(400)
-        .json({
-          message: "Course must be completed before issuing certificate",
-        });
 
-    // 3️⃣ Ensure no duplicate certificate
+    if (enrollment.status !== "completed") {
+      return res.status(400).json({
+        message: "Course must be completed before issuing certificate",
+      });
+    }
+
+    // 3️⃣ Prevent duplicate certificates
     const existingCertificate = await Certificate.findOne({
       enrollment: enrollmentId,
     });
-    if (existingCertificate)
+    if (existingCertificate) {
       return res
         .status(400)
         .json({ message: "Certificate already issued for this enrollment" });
+    }
 
-    // 4️⃣ Create certificate record
-    const verificationCode = `MATBUS-${enrollmentId}`;
-    const fileName = `certificate-${enrollmentId}.pdf`;
-    const certificateUrl = `${BASE_URL}/certificates/${fileName}`;
+    // 4️⃣ Generate verification code & file info
+    const verificationCode = `MATBUS-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 10)}`;
+    const fileName = `${verificationCode}.pdf`;
+    const certDir = path.join(__dirname, "../certificates");
+    if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
+    const filePath = path.join(certDir, fileName);
 
+    // 🔹 DEBUG LOG: exact file path
+    console.log("Saving PDF file to:", filePath);
 
+    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
+    // const certificateUrl = `${BASE_URL}/api/youth/certificates/download/${verificationCode}`;
+    const certificateUrl = `/api/youth/certificates/download/${verificationCode}`;
+
+    // 5️⃣ Save certificate to DB
     const certificate = new Certificate({
       youth: enrollment.youth._id,
       course: enrollment.course._id,
@@ -274,138 +469,40 @@ router.post("/certificate/issue", async (req, res) => {
       verificationCode,
       certificateUrl,
     });
+
     await certificate.save();
 
-    // 5️⃣ Generate PDF
-    const certDir = path.join(__dirname, "../certificates");
-    if (!fs.existsSync(certDir)) fs.mkdirSync(certDir);
-
-    const filePath = path.join(certDir, fileName);
-
+    // 6️⃣ Generate PDF
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // === DESIGN ELEMENTS ===
-    const borderWidth = 20;
-    doc
-      .rect(
-        borderWidth / 2,
-        borderWidth / 2,
-        doc.page.width - borderWidth,
-        doc.page.height - borderWidth
-      )
-      .strokeColor("#004aad")
-      .lineWidth(3)
-      .stroke();
-
-    // Logo
-    const logoPath = path.join(__dirname, "../assets/logo.png");
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, doc.page.width / 2 - 40, 70, { width: 80 });
-    }
-
-    // Title
-    doc.moveDown(7);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(26)
-      .fillColor("#004aad")
-      .text("Certificate of Completion", { align: "center" });
-
-    doc.moveDown(2);
-    doc
-      .font("Helvetica")
-      .fontSize(16)
-      .fillColor("black")
-      .text(`This certifies that`, { align: "center" });
-
-    doc.moveDown(1.2);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(22)
-      .text(`${enrollment.youth.customerName}`, { align: "center" });
-
-    doc.moveDown(1);
-    doc
-      .font("Helvetica")
-      .fontSize(16)
-      .text(`has successfully completed the course`, { align: "center" });
-
-    doc.moveDown(0.5);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .fillColor("#004aad")
-      .text(`${enrollment.course.title}`, { align: "center" });
-
-    // ✅ FIXED: Handle duration format
-    let durationText = "N/A";
-    if (
-      typeof enrollment.course.duration === "object" &&
-      enrollment.course.duration !== null
-    ) {
-      durationText = `${enrollment.course.duration.value} ${enrollment.course.duration.unit}`;
-    } else if (typeof enrollment.course.duration === "string") {
-      durationText = enrollment.course.duration;
-    }
-
-    doc.moveDown(0.5);
-    doc
-      .font("Helvetica")
-      .fontSize(14)
-      .fillColor("black")
-      .text(`Course Duration: ${durationText}`, { align: "center" });
-
-    // Verification code & date
-    doc.moveDown(2);
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text(`Verification Code: ${verificationCode}`, { align: "center" });
-    doc.text(`Issued on: ${new Date().toLocaleDateString()}`, {
-      align: "center",
-    });
-
-    // Signature
-    doc.moveDown(3);
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text("_____________________________", { align: "center" });
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text(`${employee.firstName} ${employee.lastName}`, { align: "center" });
-    doc.text("Service Manager", { align: "center" });
-
-    // Footer
-    doc.moveDown(4);
-    doc
-      .fontSize(10)
-      .fillColor("#777")
-      .text("MATBUS Training Institute", { align: "center" })
-      .text("P.O. Box 123 - Nairobi, Kenya", { align: "center" })
-      .text("www.matbus.ac.ke", { align: "center" });
-
+    // === PDF DESIGN ===
+    doc.fontSize(20).text(`Certificate for ${enrollment.youth.customerName}`, { align: "center" });
+    doc.text(`Course: ${enrollment.course.title}`, { align: "center" });
+    doc.text(`Verification Code: ${verificationCode}`, { align: "center" });
     doc.end();
 
+    // 7️⃣ Wait for PDF to finish writing before responding
     stream.on("finish", () => {
-      console.log("✅ Certificate PDF generated:", filePath);
+      console.log("PDF successfully generated:", filePath);
+      res.status(201).json({
+        message: "Certificate issued successfully",
+        certificate,
+        pdfPath: filePath // Optional: return path for debugging
+      });
     });
 
-    // 6️⃣ Response with full URL
-    res.status(201).json({
-      message: "Certificate issued successfully",
-      certificate: {
-        ...certificate._doc,
-        certificateUrl: certificateUrl,
-      },
+    stream.on("error", (err) => {
+      console.error("Error generating PDF:", err);
+      res.status(500).json({ message: "Failed to generate certificate" });
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+
 
 // Get all feedback
 router.get("/feedback", async (req, res) => {

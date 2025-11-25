@@ -9,6 +9,9 @@ const router = express.Router();
 const PDFDocument = require("pdfkit");
 const Employee = require("../models/Employee");
 const Duty = require("../models/Duty");
+const path = require('path');
+const fs = require('fs');
+
 // Get all available courses (for youth)
 router.get("/courses", async (req, res) => {
   try {
@@ -283,6 +286,63 @@ router.get('/certificate/youth/:youthId', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Get certificates by enrollment
+router.get('/certificates/enrollment/:enrollmentId', async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+
+    const certificates = await Certificate.find({ enrollment: enrollmentId })
+      .populate('youth', 'customerName')
+      .populate('course', 'title');
+
+    if (!certificates || certificates.length === 0) {
+      return res.status(404).json({ message: 'No certificates found for this enrollment' });
+    }
+
+    res.json({ certificates });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// DOWNLOAD CERTIFICATE PDF
+router.get('/certificates/download/:verificationCode', async (req, res) => {
+  try {
+    const { verificationCode } = req.params;
+    const fileName = `${verificationCode}.pdf`;
+
+    // 🔹 Use absolute path relative to project root
+    const projectRoot = path.resolve(__dirname, '..'); // adjust if your structure differs
+    const certDir = path.join(projectRoot, 'certificates');
+    const filePath = path.join(certDir, fileName);
+
+    // 🔹 DEBUG LOG
+    console.log("Trying to download file at:", filePath);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Certificate file not found' });
+    }
+
+    // Stream the file
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (err) => {
+      console.error('Error reading PDF file:', err);
+      res.status(500).json({ message: 'Error reading certificate file' });
+    });
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 
 
