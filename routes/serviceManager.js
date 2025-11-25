@@ -419,6 +419,7 @@ router.get("/courses/completed", async (req, res) => {
 // });
 
 
+
 // Approve course completion and issue certificate
 router.post("/certificate/issue", async (req, res) => {
   try {
@@ -461,10 +462,9 @@ router.post("/certificate/issue", async (req, res) => {
       .toString(36)
       .substring(2, 10)}`;
 
-    // 5️⃣ Generate PDF in memory (not on disk)
+    // 5️⃣ Generate PDF in memory
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     
-    // Collect PDF data in memory
     const chunks = [];
     doc.on('data', (chunk) => chunks.push(chunk));
     
@@ -579,22 +579,27 @@ router.post("/certificate/issue", async (req, res) => {
       try {
         const pdfBuffer = Buffer.concat(chunks);
         
-        // ✅✅✅ UPDATED: Upload to Cloudinary with PUBLIC ACCESS ✅✅✅
+        console.log('📤 Uploading certificate to Cloudinary...');
+        
+        // ✅ UPDATED: Better upload configuration
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            resource_type: 'raw',
+            resource_type: 'image', // ✅ Changed from 'raw' to 'image'
             public_id: `certificates/${verificationCode}`,
             format: 'pdf',
-            type: 'upload', // ✅ Makes it publicly accessible
-            access_mode: 'public', // ✅ Explicitly set public access
+            flags: 'attachment', // ✅ Force download instead of display
           },
           async (error, result) => {
             if (error) {
-              console.error('Cloudinary upload error:', error);
-              return res.status(500).json({ message: 'Failed to upload certificate' });
+              console.error('❌ Cloudinary upload error:', error);
+              return res.status(500).json({ 
+                message: 'Failed to upload certificate', 
+                error: error.message 
+              });
             }
 
             console.log('✅ Certificate uploaded to Cloudinary:', result.secure_url);
+            console.log('📄 Public ID:', result.public_id);
 
             // 7️⃣ Save certificate to DB with Cloudinary URL
             const certificate = new Certificate({
@@ -603,7 +608,7 @@ router.post("/certificate/issue", async (req, res) => {
               enrollment: enrollmentId,
               issuedBy: employeeId,
               verificationCode,
-              certificateUrl: result.secure_url, // Cloudinary URL
+              certificateUrl: result.secure_url,
             });
 
             await certificate.save();
@@ -619,13 +624,16 @@ router.post("/certificate/issue", async (req, res) => {
         streamifier.createReadStream(pdfBuffer).pipe(uploadStream);
         
       } catch (uploadError) {
-        console.error('Upload process error:', uploadError);
-        res.status(500).json({ message: 'Failed to process certificate' });
+        console.error('❌ Upload process error:', uploadError);
+        res.status(500).json({ 
+          message: 'Failed to process certificate',
+          error: uploadError.message 
+        });
       }
     });
 
   } catch (error) {
-    console.error('Certificate issue error:', error);
+    console.error('❌ Certificate issue error:', error);
     res.status(500).json({ message: error.message });
   }
 });
