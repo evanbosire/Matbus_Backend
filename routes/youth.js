@@ -307,42 +307,6 @@ router.get('/certificates/enrollment/:enrollmentId', async (req, res) => {
   }
 });
 
-
-// // DOWNLOAD CERTIFICATE PDF
-// router.get('/certificates/download/:verificationCode', async (req, res) => {
-//   try {
-//     const { verificationCode } = req.params;
-//     const fileName = `${verificationCode}.pdf`;
-
-//     // 🔹 Use absolute path relative to project root
-//     const projectRoot = path.resolve(__dirname, '..'); // adjust if your structure differs
-//     const certDir = path.join(projectRoot, 'certificates');
-//     const filePath = path.join(certDir, fileName);
-
-//     // 🔹 DEBUG LOG
-//     console.log("Trying to download file at:", filePath);
-
-//     if (!fs.existsSync(filePath)) {
-//       return res.status(404).json({ message: 'Certificate file not found' });
-//     }
-
-//     // Stream the file
-//     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-//     res.setHeader('Content-Type', 'application/pdf');
-
-//     const fileStream = fs.createReadStream(filePath);
-//     fileStream.pipe(res);
-
-//     fileStream.on('error', (err) => {
-//       console.error('Error reading PDF file:', err);
-//       res.status(500).json({ message: 'Error reading certificate file' });
-//     });
-//   } catch (error) {
-//     console.error('Download error:', error);
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
 // DOWNLOAD CERTIFICATE PDF - Now just redirects to Cloudinary URL
 router.get('/certificates/download/:verificationCode', async (req, res) => {
   try {
